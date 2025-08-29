@@ -21,11 +21,23 @@ export default function Home() {
   const [generatedView, setGeneratedView] = useState<GeneratedView | null>(null);
   const [currentLocation, setCurrentLocation] = useState<string>('');
   const [showResult, setShowResult] = useState(false);
+  const [mapScreenshot, setMapScreenshot] = useState<string | null>(null);
 
-  const handleArrowDrawn = async (arrow: ArrowData, location: string) => {
+  const handleArrowDrawn = async (arrow: ArrowData, location: string, mapElement: HTMLElement | null) => {
     setIsGenerating(true);
     setCurrentLocation(location);
     setShowResult(true);
+    
+    // Capture map screenshot using html2canvas or native browser API
+    if (mapElement) {
+      try {
+        // For now, we'll use a simpler approach - get the Google Static Maps URL
+        const staticMapUrl = `https://maps.googleapis.com/maps/api/staticmap?size=600x400&center=${arrow.start.lat},${arrow.start.lng}&zoom=15&path=color:0xff0000|weight:3|${arrow.start.lat},${arrow.start.lng}|${arrow.end.lat},${arrow.end.lng}&markers=color:red|${arrow.start.lat},${arrow.start.lng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyD0juXx41DhaUrWrIk6i1fPYn9AO_aOrz8'}`;
+        setMapScreenshot(staticMapUrl);
+      } catch (e) {
+        console.error('Failed to capture map screenshot:', e);
+      }
+    }
     
     try {
       // Calculate direction from arrow
@@ -99,6 +111,17 @@ export default function Home() {
                 </div>
               ) : generatedView && (
                 <>
+                  {mapScreenshot && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-600 mb-2">Input: Map with Arrow</h3>
+                      <img 
+                        src={mapScreenshot} 
+                        alt="Map with Arrow"
+                        className="w-full rounded-lg shadow-md"
+                      />
+                    </div>
+                  )}
+                  
                   <div>
                     <h3 className="text-sm font-semibold text-gray-600 mb-2">Google Street View</h3>
                     <img 

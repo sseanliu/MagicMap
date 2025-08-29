@@ -26,7 +26,7 @@ interface ArrowData {
 }
 
 interface MapComponentProps {
-  onArrowDrawn: (arrow: ArrowData, location: string) => void;
+  onArrowDrawn: (arrow: ArrowData, location: string, mapElement: HTMLElement | null) => void;
 }
 
 export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
@@ -38,6 +38,7 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
   // Use refs to track drawing state without React re-render delays
   const drawingRef = useRef(false);
   const startPointRef = useRef<google.maps.LatLngLiteral | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
   
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map);
@@ -107,7 +108,10 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
         setCurrentArrow(arrow);
         
         const locationStr = `${arrow.end.lat.toFixed(6)}, ${arrow.end.lng.toFixed(6)}`;
-        onArrowDrawn(arrow, locationStr);
+        
+        // Get the map container element for screenshot
+        const mapElement = map.getDiv();
+        onArrowDrawn(arrow, locationStr, mapElement);
       } else {
         setArrowPath([]);
       }
