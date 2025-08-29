@@ -34,6 +34,7 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
   const [isDrawing, setIsDrawing] = useState(false);
   const [arrowPath, setArrowPath] = useState<google.maps.LatLngLiteral[]>([]);
   const [currentArrow, setCurrentArrow] = useState<ArrowData | null>(null);
+  const [dragStart, setDragStart] = useState<google.maps.LatLngLiteral | null>(null);
   
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map);
@@ -43,37 +44,57 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
     setMap(null);
   }, []);
 
-  const handleMapClick = useCallback((e: google.maps.MapMouseEvent) => {
+  const handleMouseDown = useCallback((e: google.maps.MapMouseEvent) => {
     if (!e.latLng) return;
     
-    const clickedPoint = {
+    const point = {
       lat: e.latLng.lat(),
       lng: e.latLng.lng(),
     };
+    
+    setDragStart(point);
+    setArrowPath([point]);
+    setIsDrawing(true);
+  }, []);
 
-    if (!isDrawing) {
-      setIsDrawing(true);
-      setArrowPath([clickedPoint]);
-    } else {
-      const arrow: ArrowData = {
-        start: arrowPath[0],
-        end: clickedPoint,
-      };
-      setArrowPath([...arrowPath, clickedPoint]);
-      setCurrentArrow(arrow);
-      setIsDrawing(false);
-      
-      // Skip geocoding and just use coordinates directly
-      // This avoids the API error since Geocoding API isn't enabled
-      const locationStr = `${arrow.end.lat.toFixed(6)}, ${arrow.end.lng.toFixed(6)}`;
-      onArrowDrawn(arrow, locationStr);
-    }
-  }, [isDrawing, arrowPath, onArrowDrawn]);
+  const handleMouseMove = useCallback((e: google.maps.MapMouseEvent) => {
+    if (!isDrawing || !dragStart || !e.latLng) return;
+    
+    const endPoint = {
+      lat: e.latLng.lat(),
+      lng: e.latLng.lng(),
+    };
+    
+    setArrowPath([dragStart, endPoint]);
+  }, [isDrawing, dragStart]);
+
+  const handleMouseUp = useCallback((e: google.maps.MapMouseEvent) => {
+    if (!isDrawing || !dragStart || !e.latLng) return;
+    
+    const endPoint = {
+      lat: e.latLng.lat(),
+      lng: e.latLng.lng(),
+    };
+    
+    const arrow: ArrowData = {
+      start: dragStart,
+      end: endPoint,
+    };
+    
+    setArrowPath([dragStart, endPoint]);
+    setCurrentArrow(arrow);
+    setIsDrawing(false);
+    setDragStart(null);
+    
+    const locationStr = `${arrow.end.lat.toFixed(6)}, ${arrow.end.lng.toFixed(6)}`;
+    onArrowDrawn(arrow, locationStr);
+  }, [isDrawing, dragStart, onArrowDrawn]);
 
   const clearArrow = () => {
     setArrowPath([]);
     setCurrentArrow(null);
     setIsDrawing(false);
+    setDragStart(null);
   };
 
   const arrowHeadPath = useCallback(() => {
@@ -106,8 +127,13 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
           zoom={13}
           onLoad={onLoad}
           onUnmount={onUnmount}
-          onClick={handleMapClick}
-          options={options}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          options={{
+            ...options,
+            draggable: !isDrawing, // Disable map dragging while drawing arrow
+          }}
         >
           {arrowPath.length === 2 && (
             <>
@@ -137,8 +163,8 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
         <h2 className="text-lg font-semibold mb-2">Draw an Arrow</h2>
         <p className="text-sm text-gray-600 mb-3">
           {isDrawing 
-            ? "Click to set the arrow's endpoint" 
-            : "Click on the map to start drawing an arrow"}
+            ? "Drag to set the arrow's direction" 
+            : "Click and drag on the map to draw an arrow"}
         </p>
         {currentArrow && (
           <button
