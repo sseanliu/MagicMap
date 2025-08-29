@@ -3,35 +3,48 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
 
-// Image generation model specifically for images
-const imageModel = 'gemini-2.0-flash-exp';
-
 export async function POST(request: NextRequest) {
   try {
     const { location, direction, streetViewUrl } = await request.json();
     
-    // Use Gemini to generate description based on the location
-    const model = genAI.getGenerativeModel({ model: imageModel });
+    // Use the new image generation model
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image-preview' });
     
     const cardinalDirection = getCardinalDirection(direction);
     
-    // Create a prompt to generate a vivid description
-    const descriptionPrompt = `Photorealistic street view photograph: Okay, let's paint a picture of this ${cardinalDirection.toLowerCase()}-facing street view. **Image:** ${location}, facing ${cardinalDirection}, street level. **Description:** Generate a detailed, vivid description of what someone would see from this exact street-level viewpoint. Include specific architectural details, natural features, lighting, atmosphere, and any notable landmarks. Make it photorealistic and location-specific.`;
+    // Create a descriptive prompt for image generation following best practices
+    const imagePrompt = `A photorealistic street-level view from ${location}, facing ${cardinalDirection}. The scene shows a typical street view with buildings lining both sides of the road, captured during daytime with clear natural lighting. The perspective is from the middle of the street at eye level, showing architectural details, sidewalks, street elements, and any visible landmarks. The image should look like a Google Street View photograph with a wide-angle lens capturing the full environment in crisp detail.`;
     
-    const result = await model.generateContent(descriptionPrompt);
+    console.log('Generating image with prompt:', imagePrompt);
+    
+    // Generate the image
+    const result = await model.generateContent(imagePrompt);
     const response = result.response;
-    const description = response.text();
     
-    // Create the image generation prompt
-    const imageGenerationPrompt = `Image Generation Prompt: 
-Photorealistic street view photograph from ${location}, facing ${cardinalDirection}. ${description}
-Style: Google Street View photography, clear day, natural lighting, wide-angle lens.`;
+    // Extract the generated image from the response
+    let generatedImageBase64 = null;
+    let textContent = '';
+    
+    if (response.candidates && response.candidates[0]) {
+      const candidate = response.candidates[0];
+      if (candidate.content && candidate.content.parts) {
+        for (const part of candidate.content.parts) {
+          if (part.text) {
+            textContent += part.text;
+          } else if (part.inlineData) {
+            // This is the generated image in base64
+            generatedImageBase64 = part.inlineData.data;
+          }
+        }
+      }
+    }
     
     // Return the generated content
     return NextResponse.json({
       success: true,
-      description,
-      imagePrompt: imageGenerationPrompt,
+      imagePrompt,
+      generatedImage: generatedImageBase64 ? `data:image/png;base64,${generatedImageBase64}` : null,
+      textContent,
       streetViewUrl
     });
     

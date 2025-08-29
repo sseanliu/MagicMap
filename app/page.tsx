@@ -10,8 +10,9 @@ interface ArrowData {
 }
 
 interface GeneratedView {
-  description: string;
   imagePrompt: string;
+  generatedImage: string | null;
+  textContent: string;
   streetViewUrl: string;
 }
 
@@ -98,19 +99,15 @@ export default function Home() {
             </div>
             
             <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-600 mb-1">Location</h3>
-                <p className="text-gray-800">{currentLocation}</p>
-              </div>
-              
               {isGenerating ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                  <p className="text-gray-600">Generating AI image...</p>
                 </div>
               ) : generatedView && (
                 <>
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-600 mb-2">Street View</h3>
+                    <h3 className="text-sm font-semibold text-gray-600 mb-2">Google Street View</h3>
                     <img 
                       src={generatedView.streetViewUrl} 
                       alt="Street View"
@@ -119,13 +116,24 @@ export default function Home() {
                   </div>
                   
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-600 mb-2">AI Generated Description</h3>
-                    <p className="text-gray-700 leading-relaxed">{generatedView.description}</p>
+                    <h3 className="text-sm font-semibold text-gray-600 mb-2">AI Generated View</h3>
+                    {generatedView.generatedImage ? (
+                      <img 
+                        src={generatedView.generatedImage} 
+                        alt="AI Generated View"
+                        className="w-full rounded-lg shadow-md"
+                      />
+                    ) : (
+                      <div className="bg-gray-100 rounded-lg p-4 min-h-[300px] flex items-center justify-center">
+                        <p className="text-gray-500 text-center">
+                          {generatedView.textContent || 'No image generated. The model may have returned text instead.'}
+                        </p>
+                      </div>
+                    )}
                   </div>
                   
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <h3 className="text-sm font-semibold text-gray-600 mb-2">Image Generation Prompt</h3>
-                    <p className="text-xs text-gray-600 font-mono">{generatedView.imagePrompt}</p>
+                  <div className="text-xs text-gray-500">
+                    <span className="font-semibold">Location:</span> {currentLocation}
                   </div>
                 </>
               )}
