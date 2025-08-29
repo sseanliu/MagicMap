@@ -44,51 +44,96 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
     setMap(null);
   }, []);
 
-  const handleMouseDown = useCallback((e: google.maps.MapMouseEvent) => {
-    if (!e.latLng) return;
+  const handleMapReady = useCallback((map: google.maps.Map) => {
+    setMap(map);
     
-    const point = {
-      lat: e.latLng.lat(),
-      lng: e.latLng.lng(),
-    };
+    // Add direct event listeners to the map for better drag handling
+    map.addListener('mousedown', (e: google.maps.MapMouseEvent) => {
+      if (!e.latLng) return;
+      
+      const point = {
+        lat: e.latLng.lat(),
+        lng: e.latLng.lng(),
+      };
+      
+      setDragStart(point);
+      setArrowPath([point]);
+      setIsDrawing(true);
+      
+      // Disable map dragging
+      map.setOptions({ draggable: false });
+    });
     
-    setDragStart(point);
-    setArrowPath([point]);
-    setIsDrawing(true);
-  }, []);
-
-  const handleMouseMove = useCallback((e: google.maps.MapMouseEvent) => {
-    if (!isDrawing || !dragStart || !e.latLng) return;
+    map.addListener('mousemove', (e: google.maps.MapMouseEvent) => {
+      if (!e.latLng) return;
+      
+      setIsDrawing(prev => {
+        if (!prev) return false;
+        
+        setDragStart(startPoint => {
+          if (!startPoint) return null;
+          
+          const endPoint = {
+            lat: e.latLng!.lat(),
+            lng: e.latLng!.lng(),
+          };
+          
+          setArrowPath([startPoint, endPoint]);
+          return startPoint;
+        });
+        
+        return true;
+      });
+    });
     
-    const endPoint = {
-      lat: e.latLng.lat(),
-      lng: e.latLng.lng(),
-    };
-    
-    setArrowPath([dragStart, endPoint]);
-  }, [isDrawing, dragStart]);
-
-  const handleMouseUp = useCallback((e: google.maps.MapMouseEvent) => {
-    if (!isDrawing || !dragStart || !e.latLng) return;
-    
-    const endPoint = {
-      lat: e.latLng.lat(),
-      lng: e.latLng.lng(),
-    };
-    
-    const arrow: ArrowData = {
-      start: dragStart,
-      end: endPoint,
-    };
-    
-    setArrowPath([dragStart, endPoint]);
-    setCurrentArrow(arrow);
-    setIsDrawing(false);
-    setDragStart(null);
-    
-    const locationStr = `${arrow.end.lat.toFixed(6)}, ${arrow.end.lng.toFixed(6)}`;
-    onArrowDrawn(arrow, locationStr);
-  }, [isDrawing, dragStart, onArrowDrawn]);
+    map.addListener('mouseup', (e: google.maps.MapMouseEvent) => {
+      if (!e.latLng) return;
+      
+      setIsDrawing(prev => {
+        if (!prev) return false;
+        
+        setDragStart(startPoint => {
+          if (!startPoint) {
+            // Re-enable map dragging
+            map.setOptions({ draggable: true });
+            return null;
+          }
+          
+          const endPoint = {
+            lat: e.latLng!.lat(),
+            lng: e.latLng!.lng(),
+          };
+          
+          // Check if the arrow has meaningful length
+          const distance = Math.sqrt(
+            Math.pow(endPoint.lat - startPoint.lat, 2) + 
+            Math.pow(endPoint.lng - startPoint.lng, 2)
+          );
+          
+          if (distance > 0.0001) { // Minimum arrow length
+            const arrow: ArrowData = {
+              start: startPoint,
+              end: endPoint,
+            };
+            
+            setArrowPath([startPoint, endPoint]);
+            setCurrentArrow(arrow);
+            
+            const locationStr = `${arrow.end.lat.toFixed(6)}, ${arrow.end.lng.toFixed(6)}`;
+            onArrowDrawn(arrow, locationStr);
+          } else {
+            setArrowPath([]);
+          }
+          
+          // Re-enable map dragging
+          map.setOptions({ draggable: true });
+          return null;
+        });
+        
+        return false;
+      });
+    });
+  }, [onArrowDrawn]);
 
   const clearArrow = () => {
     setArrowPath([]);
@@ -125,15 +170,9 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
           mapContainerStyle={mapContainerStyle}
           center={center}
           zoom={13}
-          onLoad={onLoad}
+          onLoad={handleMapReady}
           onUnmount={onUnmount}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          options={{
-            ...options,
-            draggable: !isDrawing, // Disable map dragging while drawing arrow
-          }}
+          options={options}
         >
           {arrowPath.length === 2 && (
             <>
