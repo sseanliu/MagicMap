@@ -34,11 +34,15 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
   const [isDrawing, setIsDrawing] = useState(false);
   const [arrowPath, setArrowPath] = useState<google.maps.LatLngLiteral[]>([]);
   const [currentArrow, setCurrentArrow] = useState<ArrowData | null>(null);
+  const [drawMode, setDrawMode] = useState<'pan' | 'arrow' | 'crop'>('pan');
+  const [cropBounds, setCropBounds] = useState<google.maps.LatLngBounds | null>(null);
+  const [cropRectangle, setCropRectangle] = useState<google.maps.Rectangle | null>(null);
   
   // Use refs to track drawing state without React re-render delays
   const drawingRef = useRef(false);
   const startPointRef = useRef<google.maps.LatLngLiteral | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const cropStartRef = useRef<google.maps.LatLngLiteral | null>(null);
   
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map);
