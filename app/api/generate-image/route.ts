@@ -5,20 +5,37 @@ const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
 
 export async function POST(request: NextRequest) {
   try {
-    const { location, direction, streetViewUrl } = await request.json();
+    const { location, direction, streetViewUrl, mapImage } = await request.json();
     
     // Use the new image generation model
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image-preview' });
     
     const cardinalDirection = getCardinalDirection(direction);
     
-    // Create the prompt exactly as requested
-    const imagePrompt = `Draw what I would see in the real world if I was standing at the red circle and looking in the direction of the arrow? First guess where this is and then draw it. Location coordinates: ${location}, facing ${cardinalDirection}.`;
+    // Create the content with both text and image
+    let content: any[] = [
+      { text: "Draw what I would see in the real world if I was standing at the red circle and looking in the direction of the arrow? First guess where this is and then draw it." }
+    ];
     
-    console.log('Generating image with prompt:', imagePrompt);
+    // Add the map image if provided
+    if (mapImage) {
+      // Remove the data:image/png;base64, prefix
+      const base64Data = mapImage.replace(/^data:image\/[a-z]+;base64,/, '');
+      content.push({
+        inlineData: {
+          mimeType: "image/png",
+          data: base64Data,
+        },
+      });
+    } else {
+      // Fallback to text-only with coordinates
+      content[0].text += ` Location coordinates: ${location}, facing ${cardinalDirection}.`;
+    }
+    
+    console.log('Generating image with visual input:', !!mapImage);
     
     // Generate the image
-    const result = await model.generateContent(imagePrompt);
+    const result = await model.generateContent(content);
     const response = result.response;
     
     // Extract the generated image from the response
@@ -42,10 +59,11 @@ export async function POST(request: NextRequest) {
     // Return the generated content
     return NextResponse.json({
       success: true,
-      imagePrompt,
+      imagePrompt: content[0].text,
       generatedImage: generatedImageBase64 ? `data:image/png;base64,${generatedImageBase64}` : null,
       textContent,
-      streetViewUrl
+      streetViewUrl,
+      usedVisualInput: !!mapImage
     });
     
   } catch (error) {
