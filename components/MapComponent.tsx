@@ -44,6 +44,7 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
   const startPointRef = useRef<google.maps.LatLngLiteral | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const cropStartRef = useRef<google.maps.LatLngLiteral | null>(null);
+  const drawModeRef = useRef<'pan' | 'arrow' | 'crop'>('pan');
   
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map);
@@ -55,6 +56,7 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
 
   // Update map draggable state when draw mode changes
   useEffect(() => {
+    drawModeRef.current = drawMode;
     if (map) {
       map.setOptions({ draggable: drawMode === 'pan' });
     }
@@ -72,8 +74,8 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
         lng: e.latLng.lng(),
       };
       
-      // Check current mode
-      const currentMode = drawMode;
+      // Check current mode using ref
+      const currentMode = drawModeRef.current;
       
       if (currentMode === 'arrow') {
         drawingRef.current = true;
@@ -181,7 +183,7 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
       // Re-enable map dragging
       map.setOptions({ draggable: true });
     });
-  }, [onArrowDrawn, drawMode]);
+  }, [onArrowDrawn]);
 
   const clearArrow = () => {
     setArrowPath([]);
@@ -338,9 +340,24 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
         </div>
         
         <div className="text-sm text-gray-600 mb-3">
-          {drawMode === 'pan' && "Click and drag to move the map"}
-          {drawMode === 'arrow' && (isDrawing ? "Drag to set the arrow's direction" : "Click and drag to draw an arrow")}
-          {drawMode === 'crop' && "Click and drag to select crop area"}
+          {drawMode === 'pan' && (
+            <div className="flex items-center">
+              <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+              Click and drag to move the map
+            </div>
+          )}
+          {drawMode === 'arrow' && (
+            <div className="flex items-center">
+              <span className="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+              {isDrawing ? "Drag to set the arrow's direction" : "Click and drag to draw an arrow"}
+            </div>
+          )}
+          {drawMode === 'crop' && (
+            <div className="flex items-center">
+              <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+              Click and drag to select crop area
+            </div>
+          )}
         </div>
         
         {/* Action buttons */}
