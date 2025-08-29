@@ -69,7 +69,10 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
         if (status === 'OK' && results?.[0]) {
           onArrowDrawn(arrow, results[0].formatted_address);
         } else {
-          onArrowDrawn(arrow, 'Unknown location');
+          console.warn('Geocoding failed:', status);
+          // Fallback to coordinates if geocoding fails
+          const locationStr = `${arrow.end.lat.toFixed(6)}, ${arrow.end.lng.toFixed(6)}`;
+          onArrowDrawn(arrow, locationStr);
         }
       });
     }

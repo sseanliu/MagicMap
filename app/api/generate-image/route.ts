@@ -3,35 +3,35 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY || '');
 
+// Image generation model specifically for images
+const imageModel = 'gemini-2.0-flash-exp';
+
 export async function POST(request: NextRequest) {
   try {
     const { location, direction, streetViewUrl } = await request.json();
     
-    // Use Gemini to analyze the street view and generate description
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    // Use Gemini to generate description based on the location
+    const model = genAI.getGenerativeModel({ model: imageModel });
     
     const cardinalDirection = getCardinalDirection(direction);
     
-    const prompt = `You are looking at ${location} facing ${cardinalDirection}.
+    // Create a prompt to generate a vivid description
+    const descriptionPrompt = `Photorealistic street view photograph: Okay, let's paint a picture of this ${cardinalDirection.toLowerCase()}-facing street view. **Image:** ${location}, facing ${cardinalDirection}, street level. **Description:** Generate a detailed, vivid description of what someone would see from this exact street-level viewpoint. Include specific architectural details, natural features, lighting, atmosphere, and any notable landmarks. Make it photorealistic and location-specific.`;
     
-    Generate a detailed, photorealistic description of what someone would see from this exact viewpoint at street level. Include:
-    - Specific architectural details and building styles
-    - Natural features (trees, sky, terrain)
-    - Street elements (roads, sidewalks, signs)
-    - Atmospheric conditions and lighting
-    - Any notable landmarks or features visible
+    const result = await model.generateContent(descriptionPrompt);
+    const response = result.response;
+    const description = response.text();
     
-    Make it vivid and specific to create a photorealistic street view image.`;
+    // Create the image generation prompt
+    const imageGenerationPrompt = `Image Generation Prompt: 
+Photorealistic street view photograph from ${location}, facing ${cardinalDirection}. ${description}
+Style: Google Street View photography, clear day, natural lighting, wide-angle lens.`;
     
-    const result = await model.generateContent(prompt);
-    const description = result.response.text();
-    
-    // For now, return the description and prompt
-    // In production, you'd use an image generation API here
+    // Return the generated content
     return NextResponse.json({
       success: true,
       description,
-      imagePrompt: `Photorealistic street view photograph: ${description}. Style: Google Street View, clear day, natural lighting, wide angle lens.`,
+      imagePrompt: imageGenerationPrompt,
       streetViewUrl
     });
     
