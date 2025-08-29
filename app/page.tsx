@@ -23,7 +23,6 @@ export default function Home() {
   const [showResult, setShowResult] = useState(false);
 
   const handleArrowDrawn = async (arrow: ArrowData, location: string) => {
-    console.log('Arrow drawn:', { arrow, location });
     setIsGenerating(true);
     setCurrentLocation(location);
     setShowResult(true);
@@ -31,12 +30,10 @@ export default function Home() {
     try {
       // Calculate direction from arrow
       const direction = calculateBearing(arrow.start, arrow.end);
-      console.log('Direction calculated:', direction);
       
       // Generate Street View URL
       const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyD0juXx41DhaUrWrIk6i1fPYn9AO_aOrz8';
       const streetViewUrl = `https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${arrow.end.lat},${arrow.end.lng}&heading=${direction}&key=${apiKey}`;
-      console.log('Street View URL:', streetViewUrl);
       
       // Call API to generate description
       const response = await fetch('/api/generate-image', {
@@ -49,19 +46,15 @@ export default function Home() {
         })
       });
       
-      console.log('API Response status:', response.status);
       const data = await response.json();
-      console.log('API Response data:', data);
       
       if (data.success) {
         setGeneratedView(data);
       } else {
         console.error('API returned error:', data.error);
-        alert(`Error: ${data.error || 'Failed to generate view'}`);
       }
     } catch (error) {
       console.error('Error generating view:', error);
-      alert('Failed to generate view. Check console for details.');
     } finally {
       setIsGenerating(false);
     }

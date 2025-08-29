@@ -63,18 +63,10 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
       setCurrentArrow(arrow);
       setIsDrawing(false);
       
-      // Get location name from coordinates
-      const geocoder = new google.maps.Geocoder();
-      geocoder.geocode({ location: arrow.end }, (results, status) => {
-        if (status === 'OK' && results?.[0]) {
-          onArrowDrawn(arrow, results[0].formatted_address);
-        } else {
-          console.warn('Geocoding failed:', status);
-          // Fallback to coordinates if geocoding fails
-          const locationStr = `${arrow.end.lat.toFixed(6)}, ${arrow.end.lng.toFixed(6)}`;
-          onArrowDrawn(arrow, locationStr);
-        }
-      });
+      // Skip geocoding and just use coordinates directly
+      // This avoids the API error since Geocoding API isn't enabled
+      const locationStr = `${arrow.end.lat.toFixed(6)}, ${arrow.end.lng.toFixed(6)}`;
+      onArrowDrawn(arrow, locationStr);
     }
   }, [isDrawing, arrowPath, onArrowDrawn]);
 
