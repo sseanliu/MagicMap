@@ -107,7 +107,7 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
 
   return (
     <div className="relative w-full h-screen">
-      <LoadScript googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}>
+      <LoadScript googleMapsApiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyD0juXx41DhaUrWrIk6i1fPYn9AO_aOrz8'}>
         <GoogleMap
           mapContainerStyle={mapContainerStyle}
           center={center}
