@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { GoogleMap, LoadScript, Polyline, Marker } from '@react-google-maps/api';
 
 const mapContainerStyle = {
@@ -34,7 +34,10 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
   const [isDrawing, setIsDrawing] = useState(false);
   const [arrowPath, setArrowPath] = useState<google.maps.LatLngLiteral[]>([]);
   const [currentArrow, setCurrentArrow] = useState<ArrowData | null>(null);
-  const [dragStart, setDragStart] = useState<google.maps.LatLngLiteral | null>(null);
+  
+  // Use refs to track drawing state without React re-render delays
+  const drawingRef = useRef(false);
+  const startPointRef = useRef<google.maps.LatLngLiteral | null>(null);
   
   const onLoad = useCallback((map: google.maps.Map) => {
     setMap(map);
@@ -56,82 +59,65 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
         lng: e.latLng.lng(),
       };
       
-      setDragStart(point);
-      setArrowPath([point]);
+      drawingRef.current = true;
+      startPointRef.current = point;
       setIsDrawing(true);
+      setArrowPath([point]);
       
       // Disable map dragging
       map.setOptions({ draggable: false });
     });
     
     map.addListener('mousemove', (e: google.maps.MapMouseEvent) => {
-      if (!e.latLng) return;
+      if (!e.latLng || !drawingRef.current || !startPointRef.current) return;
       
-      setIsDrawing(prev => {
-        if (!prev) return false;
-        
-        setDragStart(startPoint => {
-          if (!startPoint) return null;
-          
-          const endPoint = {
-            lat: e.latLng!.lat(),
-            lng: e.latLng!.lng(),
-          };
-          
-          setArrowPath([startPoint, endPoint]);
-          return startPoint;
-        });
-        
-        return true;
-      });
+      const endPoint = {
+        lat: e.latLng.lat(),
+        lng: e.latLng.lng(),
+      };
+      
+      setArrowPath([startPointRef.current, endPoint]);
     });
     
     map.addListener('mouseup', (e: google.maps.MapMouseEvent) => {
-      if (!e.latLng) return;
+      if (!drawingRef.current || !startPointRef.current) {
+        // Re-enable map dragging
+        map.setOptions({ draggable: true });
+        return;
+      }
       
-      setIsDrawing(prev => {
-        if (!prev) return false;
+      const endPoint = e.latLng ? {
+        lat: e.latLng.lat(),
+        lng: e.latLng.lng(),
+      } : startPointRef.current;
+      
+      // Check if the arrow has meaningful length
+      const distance = Math.sqrt(
+        Math.pow(endPoint.lat - startPointRef.current.lat, 2) + 
+        Math.pow(endPoint.lng - startPointRef.current.lng, 2)
+      );
+      
+      if (distance > 0.0001) { // Minimum arrow length
+        const arrow: ArrowData = {
+          start: startPointRef.current,
+          end: endPoint,
+        };
         
-        setDragStart(startPoint => {
-          if (!startPoint) {
-            // Re-enable map dragging
-            map.setOptions({ draggable: true });
-            return null;
-          }
-          
-          const endPoint = {
-            lat: e.latLng!.lat(),
-            lng: e.latLng!.lng(),
-          };
-          
-          // Check if the arrow has meaningful length
-          const distance = Math.sqrt(
-            Math.pow(endPoint.lat - startPoint.lat, 2) + 
-            Math.pow(endPoint.lng - startPoint.lng, 2)
-          );
-          
-          if (distance > 0.0001) { // Minimum arrow length
-            const arrow: ArrowData = {
-              start: startPoint,
-              end: endPoint,
-            };
-            
-            setArrowPath([startPoint, endPoint]);
-            setCurrentArrow(arrow);
-            
-            const locationStr = `${arrow.end.lat.toFixed(6)}, ${arrow.end.lng.toFixed(6)}`;
-            onArrowDrawn(arrow, locationStr);
-          } else {
-            setArrowPath([]);
-          }
-          
-          // Re-enable map dragging
-          map.setOptions({ draggable: true });
-          return null;
-        });
+        setArrowPath([startPointRef.current, endPoint]);
+        setCurrentArrow(arrow);
         
-        return false;
-      });
+        const locationStr = `${arrow.end.lat.toFixed(6)}, ${arrow.end.lng.toFixed(6)}`;
+        onArrowDrawn(arrow, locationStr);
+      } else {
+        setArrowPath([]);
+      }
+      
+      drawingRef.current = false;
+      startPointRef.current = null;
+      setIsDrawing(false);
+      
+      // Re-enable map dragging
+      map.setOptions({ draggable: true });
     });
   }, [onArrowDrawn]);
 
@@ -139,7 +125,8 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
     setArrowPath([]);
     setCurrentArrow(null);
     setIsDrawing(false);
-    setDragStart(null);
+    drawingRef.current = false;
+    startPointRef.current = null;
   };
 
   const arrowHeadPath = useCallback(() => {
