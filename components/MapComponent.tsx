@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { GoogleMap, LoadScript, Polyline, Marker } from '@react-google-maps/api';
 import html2canvas from 'html2canvas';
 
@@ -52,6 +52,13 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
   const onUnmount = useCallback(() => {
     setMap(null);
   }, []);
+
+  // Update map draggable state when draw mode changes
+  useEffect(() => {
+    if (map) {
+      map.setOptions({ draggable: drawMode === 'pan' });
+    }
+  }, [map, drawMode]);
 
   const handleMapReady = useCallback((map: google.maps.Map) => {
     setMap(map);
@@ -174,7 +181,7 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
       // Re-enable map dragging
       map.setOptions({ draggable: true });
     });
-  }, [onArrowDrawn]);
+  }, [onArrowDrawn, drawMode]);
 
   const clearArrow = () => {
     setArrowPath([]);
@@ -253,7 +260,10 @@ export default function MapComponent({ onArrowDrawn }: MapComponentProps) {
           zoom={13}
           onLoad={handleMapReady}
           onUnmount={onUnmount}
-          options={options}
+          options={{
+            ...options,
+            draggable: drawMode === 'pan',
+          }}
         >
           {arrowPath.length === 2 && (
             <>
