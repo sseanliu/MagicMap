@@ -12,8 +12,8 @@ export async function POST(request: NextRequest) {
     
     const cardinalDirection = getCardinalDirection(direction);
     
-    // Create a descriptive prompt for image generation following best practices
-    const imagePrompt = `A photorealistic street-level view from ${location}, facing ${cardinalDirection}. The scene shows a typical street view with buildings lining both sides of the road, captured during daytime with clear natural lighting. The perspective is from the middle of the street at eye level, showing architectural details, sidewalks, street elements, and any visible landmarks. The image should look like a Google Street View photograph with a wide-angle lens capturing the full environment in crisp detail.`;
+    // Create the prompt exactly as requested
+    const imagePrompt = `Draw what I would see in the real world if I was standing at the red circle and looking in the direction of the arrow? First guess where this is and then draw it. Location coordinates: ${location}, facing ${cardinalDirection}.`;
     
     console.log('Generating image with prompt:', imagePrompt);
     
